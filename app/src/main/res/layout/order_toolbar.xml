@@ -1,0 +1,5 @@
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android" android:layout_width="match_parent" android:layout_height="wrap_content" android:orientation="horizontal" android:padding="4dp" android:background="#F4F0FF">
+<Button android:id="@+id/copy_name" android:layout_width="0dp" android:layout_weight="1" android:layout_height="56dp" android:text="Copy name" android:textAllCaps="false" android:textSize="14sp" android:textColor="#28204D" android:backgroundTint="#E8DEFF"/>
+<Button android:id="@+id/copy_strength" android:layout_width="0dp" android:layout_weight="1" android:layout_height="56dp" android:text="Copy dosage" android:textAllCaps="false" android:textSize="14sp" android:textColor="#28204D" android:backgroundTint="#E8DEFF"/>
+<Button android:id="@+id/copy_both" android:layout_width="0dp" android:layout_weight="1" android:layout_height="56dp" android:text="Copy both" android:textAllCaps="false" android:textSize="14sp" android:textColor="#28204D" android:backgroundTint="#E8DEFF"/>
+</LinearLayout>
