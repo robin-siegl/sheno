@@ -1,0 +1,14 @@
+<resources>
+    <style name="Theme.Sheno" parent="android:style/Theme.Material.Light.NoActionBar">
+        <item name="android:fontFamily">sans</item>
+        <item name="android:windowLightStatusBar">true</item>
+        <item name="android:statusBarColor">@android:color/transparent</item>
+        <item name="android:navigationBarColor">@android:color/transparent</item>
+        <item name="android:colorAccent">#5B50D6</item>
+        <item name="android:windowActionModeOverlay">true</item>
+        <item name="android:windowBackground">#FFFBFF</item>
+    </style>
+    <color name="brand">#5B50D6</color>
+    <color name="widget_surface">#F4F0FF</color>
+    <color name="widget_text">#1D1B20</color>
+</resources>

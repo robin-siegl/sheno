@@ -1,0 +1,115 @@
+name: Production APK
+run-name: Sheno production from gradle.properties
+
+on:
+  workflow_dispatch:
+    inputs:
+      publish_release:
+        description: 'Publish a public GitHub release with the signed APK'
+        type: boolean
+        default: true
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sheno-production
+  cancel-in-progress: false
+
+jobs:
+  version:
+    if: github.ref == 'refs/heads/main'
+    name: Validate project version
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      version: ${{ steps.version.outputs.version }}
+      tag: ${{ steps.version.outputs.tag }}
+      version_code: ${{ steps.version.outputs.version_code }}
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+      - name: Read the committed Gradle version
+        id: version
+        run: python3 scripts/release_version.py
+
+  checks:
+    name: Release checks
+    needs: version
+    uses: ./.github/workflows/ci.yml
+
+  build:
+    name: Signed production APK
+    needs: [version, checks]
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v5
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+      - uses: android-actions/setup-android@v3
+        with:
+          cmdline-tools-version: 12700392
+          log-accepted-android-sdk-licenses: false
+          packages: platform-tools platforms;android-36 build-tools;36.0.0
+      - uses: gradle/actions/setup-gradle@v4
+      - name: Configure release signing
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_KEYSTORE_PASSWORD: ${{ secrets.ANDROID_KEYSTORE_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+        run: python3 scripts/prepare_signing.py
+      - name: Build production APK
+        run: ./gradlew :app:assembleRelease :app:lintRelease --stacktrace
+      - name: Verify signature and prepare download
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose --print-certs app/build/outputs/apk/release/app-release.apk
+          mkdir -p dist
+          cp app/build/outputs/apk/release/app-release.apk "dist/sheno-$VERSION.apk"
+          cd dist
+          sha256sum *.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@v4
+        with:
+          name: sheno-production-${{ needs.version.outputs.version }}
+          path: dist/
+          if-no-files-found: error
+      - name: Remove temporary signing key
+        if: always()
+        run: rm -f "$RUNNER_TEMP/sheno-release.p12"
+      - name: Download instructions
+        env:
+          VERSION: ${{ needs.version.outputs.version }}
+        run: |
+          echo "### sheno $VERSION" >> "$GITHUB_STEP_SUMMARY"
+          echo "Download the sheno-production-$VERSION artifact below. Public releases also attach the APK and checksum under Releases." >> "$GITHUB_STEP_SUMMARY"
+
+  publish:
+    name: Publish GitHub release
+    if: inputs.publish_release
+    needs: [version, build]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/download-artifact@v4
+        with:
+          name: sheno-production-${{ needs.version.outputs.version }}
+          path: dist
+      - name: Create tag and publish verified files
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERSION: ${{ needs.version.outputs.version }}
+          TAG: ${{ needs.version.outputs.tag }}
+          COMMIT: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          # Atomic ref creation rejects a tag created by another publisher during the build.
+          gh api --method POST "repos/$GH_REPO/git/refs" -f "ref=refs/tags/$TAG" -f "sha=$COMMIT" --silent
+          gh release create "$TAG" dist/* --verify-tag --title "sheno $VERSION" --generate-notes
