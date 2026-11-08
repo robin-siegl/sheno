@@ -33,7 +33,14 @@ class MedicationUiTest {
         compose.waitForIdle()
         val directory = File(compose.activity.getExternalFilesDir(null), "screenshots").apply { mkdirs() }
         val screenshot = InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot()
-        File(directory, "$name.png").outputStream().use { screenshot.compress(Bitmap.CompressFormat.PNG, 100, it) }
+        val file = File(directory, "$name.png")
+        file.outputStream().use { screenshot.compress(Bitmap.CompressFormat.PNG, 100, it) }
         screenshot.recycle()
+        // AGP uninstalls the app after testing, which removes its app-specific files.
+        android.os.ParcelFileDescriptor.AutoCloseInputStream(
+            InstrumentationRegistry.getInstrumentation().uiAutomation.executeShellCommand(
+                "mkdir -p /sdcard/Download/sheno-screenshots && cp ${file.absolutePath} /sdcard/Download/sheno-screenshots/$name.png"
+            )
+        ).use { it.readBytes() }
     }
 }

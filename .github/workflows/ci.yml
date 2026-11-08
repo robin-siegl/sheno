@@ -79,7 +79,7 @@ jobs:
           api-level: 35
           arch: x86_64
           disable-animations: true
-          script: ./gradlew :app:connectedDebugAndroidTest --stacktrace && adb pull /sdcard/Android/data/dev.robinsiegl.sheno.dev/files/screenshots app/build/ui-screenshots
+          script: ./gradlew :app:connectedDebugAndroidTest --stacktrace && (adb pull /sdcard/Download/sheno-screenshots app/build/ui-screenshots || true)
       - name: Upload device test reports
         if: always()
         uses: actions/upload-artifact@v4
