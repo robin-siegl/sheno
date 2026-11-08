@@ -59,7 +59,7 @@ object ReminderEngine {
         val med = context.sheno.repository.medication(parts[0]) ?: return@runCatching null
         Schedule.on(med, LocalDate.parse(parts[1])).firstOrNull { it.time == LocalTime.parse(parts[2]) }
     }.getOrNull()
-    suspend fun refresh(context: Context) = mutex.withLock {
+    suspend fun refresh(context: Context): Unit = mutex.withLock {
         channels(context)
         val repo = context.sheno.repository
         val dao = repo.dao
