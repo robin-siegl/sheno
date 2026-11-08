@@ -72,9 +72,12 @@ object ReminderEngine {
         // Remove obsolete notifications after logging, deleting, pausing, or changing a schedule.
         manager.activeNotifications.forEach { notification ->
             val key = notification.tag ?: return@forEach
+            val occurrence = if (!key.startsWith("stock|") && key != "test") slot(context, key) else null
             val valid = if (key.startsWith("stock|")) meds.any { "stock|${it.id}" == key && Schedule.low(it, now) }
-                else key == "test" || key !in logs && slot(context, key)?.medication?.reminders == true
+                else key == "test" || key !in logs && occurrence?.medication?.reminders == true
             if (!valid) manager.cancel(key, 0)
+            else if (occurrence != null) showDose(context, occurrence)
+            else if (key.startsWith("stock|")) meds.firstOrNull { "stock|${it.id}" == key }?.let { showStock(context, it) }
         }
         val today = now.atZone(ZoneId.systemDefault()).toLocalDate()
         val candidates = mutableListOf<Long>()
@@ -148,7 +151,7 @@ object ReminderEngine {
         return post(context, slot.key, NotificationCompat.Builder(context, DOSES)
             .setSmallIcon(R.drawable.ic_notification).setContentTitle(title).setContentText(body)
             .setStyle(NotificationCompat.BigTextStyle().bigText(body)).setContentIntent(open(context))
-            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setAutoCancel(true)
+            .setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setAutoCancel(true).setOnlyAlertOnce(true).setWhen(slot.at.toEpochMilli())
             .addAction(0, "Taken", action(context, slot.key, "TAKEN"))
             .addAction(0, "Snooze 10 min", action(context, slot.key, "SNOOZE"))
             .addAction(0, "Skip", action(context, slot.key, "SKIP")))
@@ -158,7 +161,7 @@ object ReminderEngine {
         val builder = NotificationCompat.Builder(context, STOCK).setSmallIcon(R.drawable.ic_notification)
             .setContentTitle(if (discreet) "Medication stock is low" else "${med.name}: low stock")
             .setContentText(if (discreet) "Open Sheno to check your inventory." else "${quantityText(med.stock.coerceAtLeast(0))} ${med.form.unit} recorded in stock.")
-            .setContentIntent(open(context, "medications")).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setAutoCancel(true)
+            .setContentIntent(open(context, "medications")).setVisibility(NotificationCompat.VISIBILITY_PRIVATE).setAutoCancel(true).setOnlyAlertOnce(true)
         if (validOrderUrl(med.reorderUrl)) builder.addAction(0, "Open order page", OrderActivity.pending(context, med.id))
         return post(context, "stock|${med.id}", builder)
     }

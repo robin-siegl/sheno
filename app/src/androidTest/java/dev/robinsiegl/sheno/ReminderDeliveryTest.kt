@@ -19,6 +19,7 @@ class ReminderDeliveryTest {
     private val context = instrumentation.targetContext
     @After fun clear() = runBlocking(Dispatchers.IO) {
         context.sheno.database.clearAllTables()
+        context.sheno.settings.set(Preferences())
         context.getSystemService(NotificationManager::class.java).cancelAll()
         ReminderEngine.refresh(context)
     }
@@ -37,6 +38,10 @@ class ReminderDeliveryTest {
         ReminderEngine.refresh(context)
         assertTrue(repo.dao.receipts().any { it.id == slot.key })
         assertTrue(context.getSystemService(NotificationManager::class.java).activeNotifications.any { it.tag == slot.key })
+        context.sheno.settings.set(Preferences(discreet = true))
+        ReminderEngine.refresh(context)
+        val notification = context.getSystemService(NotificationManager::class.java).activeNotifications.single { it.tag == slot.key }.notification
+        assertEquals("Medication reminder", notification.extras.getCharSequence(android.app.Notification.EXTRA_TITLE).toString())
         context.sendBroadcast(Intent(context, DoseActionReceiver::class.java).setAction("TAKEN").putExtra("key", slot.key))
         withTimeout(10000) { while (repo.dao.log(slot.key) == null) delay(50) }
         assertEquals(29 * SCALE, repo.medication(med.id)!!.stock)
