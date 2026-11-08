@@ -10,6 +10,10 @@ on:
 permissions:
   contents: read
 
+concurrency:
+  group: sheno-checks-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   formatting:
     name: Formatting
@@ -75,7 +79,21 @@ jobs:
           api-level: 35
           arch: x86_64
           disable-animations: true
-          script: ./gradlew :app:connectedDebugAndroidTest --stacktrace
+          script: ./gradlew :app:connectedDebugAndroidTest --stacktrace && adb pull /sdcard/Android/data/dev.robinsiegl.sheno.dev/files/screenshots app/build/ui-screenshots
+      - name: Upload device test reports
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sheno-device-test-reports
+          path: app/build/reports/androidTests/
+          if-no-files-found: ignore
+      - name: Upload UI screenshots
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sheno-ui-screenshots
+          path: app/build/ui-screenshots/
+          if-no-files-found: ignore
   debug-apk:
     name: Dev APK
     runs-on: ubuntu-latest

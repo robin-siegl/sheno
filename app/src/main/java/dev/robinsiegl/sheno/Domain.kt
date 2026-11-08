@@ -139,11 +139,12 @@ object Schedule {
     fun validate() {
         require(format == "sheno" && version == 1) { "This file is not a supported Sheno backup." }
         require(medications.size <= 1000 && history.size <= 50000) { "The backup is too large." }
-        require(medications.map { it.id }.distinct().size == medications.size) { "Duplicate medication identifiers." }
+        val medicationIds = medications.map { it.id }.toSet()
+        require(medicationIds.size == medications.size) { "Duplicate medication identifiers." }
         medications.forEach { require(it.validate() == null) { it.validate() ?: "Invalid medication." } }
         require(history.map { it.id }.distinct().size == history.size) { "Duplicate history identifiers." }
         history.forEach {
-            require(it.id.isNotBlank() && it.id.length <= 256 && it.medicationId in medications.map(Medication::id) && it.amount in 1..MAX_QUANTITY && it.name.length <= 100 && it.strength.length <= 100 && it.unit.length <= 30 && it.recordedAt >= 0) { "Invalid history record." }
+            require(it.id.isNotBlank() && it.id.length <= 256 && it.medicationId in medicationIds && it.amount in 1..MAX_QUANTITY && it.name.length <= 100 && it.strength.length <= 100 && it.unit.length <= 30 && it.recordedAt >= 0) { "Invalid history record." }
         }
     }
 }

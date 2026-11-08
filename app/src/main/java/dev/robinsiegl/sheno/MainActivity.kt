@@ -1,6 +1,7 @@
 package dev.robinsiegl.sheno
 
 import android.os.Bundle
+import android.content.Intent
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.BackHandler
 import androidx.activity.compose.setContent
@@ -17,12 +18,22 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.ViewModelProvider
 import androidx.lifecycle.compose.LocalLifecycleOwner
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.MutableStateFlow
 
 class MainActivity : ComponentActivity() {
+    private val destination = MutableStateFlow<String?>(null)
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        setIntent(intent)
+        destination.value = "${intent.data?.lastPathSegment ?: "today"}|${System.nanoTime()}"
+    }
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
+        if (savedInstanceState == null) destination.value = intent.data?.lastPathSegment
         setContent {
             val vm: ShenoViewModel = viewModel(factory = object : ViewModelProvider.Factory {
                 @Suppress("UNCHECKED_CAST")
@@ -31,6 +42,15 @@ class MainActivity : ComponentActivity() {
             val model by vm.model.collectAsStateWithLifecycle()
             var permissionTick by remember { mutableIntStateOf(0) }
             val lifecycle = LocalLifecycleOwner.current
+            val route by destination.collectAsStateWithLifecycle()
+            LaunchedEffect(route) {
+                route?.let { vm.accept(AppIntent.Navigate(if (it.substringBefore('|') == "medications") Page.MEDICATIONS else Page.TODAY)) }
+            }
+            LaunchedEffect(lifecycle) {
+                lifecycle.lifecycle.repeatOnLifecycle(Lifecycle.State.STARTED) {
+                    while (true) { delay(60_000); vm.accept(AppIntent.Refresh) }
+                }
+            }
             DisposableEffect(lifecycle) {
                 val observer = LifecycleEventObserver { _, event ->
                     if (event == Lifecycle.Event.ON_RESUME) { permissionTick++; vm.accept(AppIntent.Refresh) }

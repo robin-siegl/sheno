@@ -9,6 +9,8 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.receiveAsFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withContext
+import kotlinx.coroutines.Dispatchers
 
 enum class Page { TODAY, MEDICATIONS, HISTORY, SETTINGS }
 data class Model(
@@ -17,6 +19,7 @@ data class Model(
     val page: Page = Page.TODAY, val selectedId: String? = null,
     val editor: Medication? = null, val editing: Boolean = false,
     val busy: Boolean = false, val importPreview: Backup? = null,
+    val clock: Long = System.currentTimeMillis(),
 )
 sealed interface AppIntent {
     data class Navigate(val page: Page) : AppIntent
@@ -54,7 +57,7 @@ class ShenoViewModel(private val app: ShenoApplication) : ViewModel() {
             AppIntent.CloseEditor -> mutable.update { it.copy(editing = false) }
             AppIntent.CancelImport -> mutable.update { it.copy(importPreview = null) }
             is AppIntent.PreviewImport -> viewModelScope.launch {
-                runCatching { app.repository.readBackup(intent.text) }
+                runCatching { withContext(Dispatchers.Default) { app.repository.readBackup(intent.text) } }
                     .onSuccess { backup -> mutable.update { it.copy(importPreview = backup) } }
                     .onFailure { message(it.message ?: "Could not read this backup.") }
             }
@@ -94,7 +97,7 @@ class ShenoViewModel(private val app: ShenoApplication) : ViewModel() {
         } catch (error: Exception) {
             if (error is kotlinx.coroutines.CancellationException) throw error
             message(error.message ?: "The change could not be saved.")
-        } finally { mutable.update { it.copy(busy = false) } }
+        } finally { mutable.update { it.copy(busy = false, clock = System.currentTimeMillis()) } }
     }
     suspend fun export(): String = app.repository.export(mutable.value.preferences)
 }

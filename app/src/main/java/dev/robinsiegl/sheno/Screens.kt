@@ -89,6 +89,7 @@ val historyLabel: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM, HH:mm"
 }
 
 @Composable fun TodayScreen(model: Model, vm: ShenoViewModel, modifier: Modifier) {
+    val context = LocalContext.current
     val today = LocalDate.now()
     val active = model.medications.filter { !it.archived }
     val slots = active.flatMap { Schedule.on(it, today) }.sortedBy { it.at }
@@ -108,7 +109,7 @@ val historyLabel: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM, HH:mm"
                     }
                 }
             }
-            if (!ReminderEngine.notificationsAllowed(LocalContext.current) || !ReminderEngine.exactAllowed(LocalContext.current)) item {
+            if (!ReminderEngine.notificationsAllowed(context) || !ReminderEngine.exactAllowed(context)) item {
                 OutlinedCard(onClick = { vm.accept(AppIntent.Navigate(Page.SETTINGS)) }) {
                     Row(Modifier.padding(16.dp), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
                         Icon(Icons.Default.NotificationsActive, null)
@@ -140,10 +141,12 @@ val historyLabel: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM, HH:mm"
                 Icon(if (log.status == DoseStatus.TAKEN) Icons.Default.CheckCircle else Icons.Default.RemoveCircleOutline, null, Modifier.size(20.dp))
                 Text(if (log.status == DoseStatus.TAKEN) "Taken" else "Skipped", Modifier.padding(start = 8.dp).weight(1f))
                 TextButton(onClick = { vm.accept(AppIntent.Undo(log.id)) }, enabled = !busy) { Text("Undo") }
-            } else Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp), verticalAlignment = Alignment.CenterVertically) {
-                Text(if (slot.at < Instant.now()) "Not recorded" else "Scheduled", style = MaterialTheme.typography.bodyMedium, modifier = Modifier.weight(1f))
-                TextButton(onClick = { vm.accept(AppIntent.Record(slot, DoseStatus.SKIPPED)) }, enabled = !busy) { Text("Skip") }
-                FilledTonalButton(onClick = { vm.accept(AppIntent.Record(slot, DoseStatus.TAKEN)) }, enabled = !busy) { Text("Taken") }
+            } else Column {
+                Text(if (slot.at < Instant.now()) "Not recorded" else "Scheduled", style = MaterialTheme.typography.bodyMedium)
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(12.dp, Alignment.End), verticalAlignment = Alignment.CenterVertically) {
+                    TextButton(onClick = { vm.accept(AppIntent.Record(slot, DoseStatus.SKIPPED)) }, enabled = !busy) { Text("Skip") }
+                    FilledTonalButton(onClick = { vm.accept(AppIntent.Record(slot, DoseStatus.TAKEN)) }, enabled = !busy) { Text("Taken") }
+                }
             }
         }
     }
@@ -195,7 +198,7 @@ val historyLabel: DateTimeFormatter = DateTimeFormatter.ofPattern("d MMM, HH:mm"
                 if (med.stock < 0) Text("Inventory needs updating.")
                 else if (days != null) Text(if (days == 0) "Estimated to run out today" else "Estimated to last $days days")
                 if (days != null) Text("Based on your entered schedule and recorded stock.", style = MaterialTheme.typography.bodySmall)
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                     Button(onClick = { quantityAction = "add" }, enabled = !model.busy) { Text("Add package") }
                     TextButton(onClick = { quantityAction = "adjust" }, enabled = !model.busy) { Text("Adjust stock") }
                 }
@@ -248,7 +251,7 @@ fun scheduleDescription(med: Medication): String = when (med.frequency) {
     AlertDialog(onDismissRequest = onDismiss, title = { Text(when (action) { "log" -> "Record an intake"; "adjust" -> "Adjust stock"; else -> "Add a package" }) },
         text = { Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
             if (action == "log" && med.frequency != Frequency.AS_NEEDED) Text("This adds a separate history entry. Record a scheduled intake from Today.")
-            if (action == "add") Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (action == "add") FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 listOf(28, 30).forEach { count -> SuggestionChip(onClick = { text = count.toString() }, label = { Text(count.toString()) }) }
                 SuggestionChip(onClick = { text = "" }, label = { Text("Custom") })
             }

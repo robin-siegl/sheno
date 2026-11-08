@@ -1,3 +1,4 @@
+@file:OptIn(androidx.compose.foundation.layout.ExperimentalLayoutApi::class)
 package dev.robinsiegl.sheno
 
 import android.Manifest
@@ -66,7 +67,7 @@ fun readLimited(reader: Reader): String {
         item { FilledTonalButton(onClick = { ReminderEngine.test(context); if (!allowed) vm.message("Enable notifications before sending a test.") }) { Text("Send test notification") } }
         item { SettingSwitch("Discreet notifications and widget", "Hide medication names and dosage details.", model.preferences.discreet) { vm.accept(AppIntent.Settings(model.preferences.copy(discreet = it))) } }
         item { HorizontalDivider(); Text("Appearance", style = MaterialTheme.typography.titleLarge, modifier = Modifier.padding(top = 16.dp)) }
-        item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        item { FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             listOf("System", "Light", "Dark").forEach { theme -> FilterChip(selected = model.preferences.theme == theme, onClick = { vm.accept(AppIntent.Settings(model.preferences.copy(theme = theme))) }, label = { Text(theme) }) }
         } }
         item { SettingSwitch("Use device colors", "Use your phone’s Material You palette.", model.preferences.dynamicColor) { vm.accept(AppIntent.Settings(model.preferences.copy(dynamicColor = it))) } }
@@ -74,7 +75,7 @@ fun readLimited(reader: Reader): String {
             Text("Your data is stored on this device. Android can include it in encrypted system backups when device backup is enabled. Backup timing is managed by Android.", Modifier.padding(top = 8.dp))
             OutlinedButton(onClick = { context.startActivity(Intent(Settings.ACTION_PRIVACY_SETTINGS)) }) { Text("Android backup settings") }
         }
-        item { Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+        item { FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             Button(onClick = { export.launch("sheno-backup-${LocalDate.now()}.json") }, enabled = !model.busy) { Text("Export backup") }
             OutlinedButton(onClick = { importFile.launch(arrayOf("application/json", "text/plain", "application/octet-stream")) }, enabled = !model.busy) { Text("Import backup") }
         } }
